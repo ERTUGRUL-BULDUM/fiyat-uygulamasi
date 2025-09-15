@@ -255,9 +255,9 @@ if st.session_state.products and customer_company.strip():
                                          textColor=colors.Color(0.86, 0.24, 0.26))
             
             # İçerik oluştur
-            company_name = fix_turkish_chars("BULDUMLAR BİBER & BAHARAT ENTEGRE TESİSLERİ")
+            company_name = fix_turkish_chars("BULDUMLAR BIBER & BAHARAT ENT. TESISLERI")
             story.append(Paragraph(company_name, company_style))
-            story.append(Paragraph(fix_turkish_chars("FİYAT TEKLİFİ"), title_style))
+            story.append(Paragraph(fix_turkish_chars("FIYAT TEKLIFI"), title_style))
             story.append(Spacer(1, 15))
             
             today = datetime.now()
@@ -328,7 +328,7 @@ if st.session_state.products and customer_company.strip():
             story.append(Paragraph(f"<b>{fix_turkish_chars('Ertugrul BULDUM')}</b>", normal_style))
             story.append(Paragraph(fix_turkish_chars("Satis Direktoru"), normal_style))
             story.append(Spacer(1, 10))
-            story.append(Paragraph("<b>İletisim:</b> +90 530 078 06 46", normal_style))
+            story.append(Paragraph("<b>Iletisim:</b> +90 530 078 06 46", normal_style))
             story.append(Paragraph("E-mail: info@buldumlarbiber.com", normal_style))
             
             # Logo ekleme fonksiyonu
@@ -361,7 +361,7 @@ if st.session_state.products and customer_company.strip():
                 os.remove(filename)
                 
         except Exception as e:
-            st.error(f"PDF olusturma hatasi: {str(e)}")
+            st.error(f"PDF oluşturma hatası: {str(e)}")
 
 # PDF kontrolleri
 if st.session_state.pdf_data:
@@ -371,7 +371,7 @@ if st.session_state.pdf_data:
     
     with col_download:
         st.download_button(
-            label="📥 PDF Indir",
+            label="📥 PDF İndir",
             data=st.session_state.pdf_data,
             file_name=st.session_state.pdf_filename,
             mime="application/pdf",
@@ -390,7 +390,7 @@ if st.session_state.pdf_data:
             cursor: pointer; 
             width: 100%;
             font-weight: bold;
-        ">🖨️ PDF Yazdir</button>
+        ">🖨️ PDF Yazdır</button>
         
         <script>
         function printPDF() {{
@@ -407,7 +407,7 @@ if st.session_state.pdf_data:
         st.components.v1.html(print_button_html, height=50)
     
     with col_share:
-        share_text = f"Fiyat Teklifi: {customer_company} - {len(st.session_state.products)} urun"
+        share_text = f"Fiyat Teklifi: {customer_company} - {len(st.session_state.products)} ürün"
         share_url = f"https://wa.me/?text={share_text.replace(' ', '%20')}"
         
         st.markdown(f"""
@@ -422,17 +422,16 @@ if st.session_state.pdf_data:
             width: 100%;
             font-weight: bold;
             box-sizing: border-box;
-        ">📱 WhatsApp Paylas</a>
+        ">📱 WhatsApp Paylaş</a>
         """, unsafe_allow_html=True)
     
     # PDF Görüntüleme
-    if st.button("👁️ PDF Goruntule", use_container_width=True):
+    if st.button("👁️ PDF Görüntüle", use_container_width=True):
         b64_pdf = base64.b64encode(st.session_state.pdf_data).decode('utf-8')
         pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="600"></iframe>'
         st.markdown(pdf_display, unsafe_allow_html=True)
 
 elif not st.session_state.products:
-    st.warning("PDF olusturmak icin en az bir urun ekleyin.")
+    st.warning("PDF oluşturmak için en az bir ürün ekleyin.")
 elif not customer_company.strip():
-    st.warning("PDF olusturmak icin musteri firma adini girin.")
-
+    st.warning("PDF oluşturmak için müşteri firma adını girin.")
