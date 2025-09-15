@@ -255,9 +255,9 @@ if st.session_state.products and customer_company.strip():
                                          textColor=colors.Color(0.86, 0.24, 0.26))
             
             # İçerik oluştur
-            company_name = fix_turkish_chars("BULDUMLAR BIBER & BAHARAT ENT. TESISLERI")
+            company_name = fix_turkish_chars("BULDUMLAR BİBER & BAHARAT ENTEGRE TESİSLERİ")
             story.append(Paragraph(company_name, company_style))
-            story.append(Paragraph(fix_turkish_chars("FIYAT TEKLIFI"), title_style))
+            story.append(Paragraph(fix_turkish_chars("FİYAT TEKLİFİ"), title_style))
             story.append(Spacer(1, 15))
             
             today = datetime.now()
@@ -328,7 +328,7 @@ if st.session_state.products and customer_company.strip():
             story.append(Paragraph(f"<b>{fix_turkish_chars('Ertugrul BULDUM')}</b>", normal_style))
             story.append(Paragraph(fix_turkish_chars("Satis Direktoru"), normal_style))
             story.append(Spacer(1, 10))
-            story.append(Paragraph("<b>Iletisim:</b> +90 530 078 06 46", normal_style))
+            story.append(Paragraph("<b>İletisim:</b> +90 530 078 06 46", normal_style))
             story.append(Paragraph("E-mail: info@buldumlarbiber.com", normal_style))
             
             # Logo ekleme fonksiyonu
@@ -435,3 +435,4 @@ elif not st.session_state.products:
     st.warning("PDF olusturmak icin en az bir urun ekleyin.")
 elif not customer_company.strip():
     st.warning("PDF olusturmak icin musteri firma adini girin.")
+
