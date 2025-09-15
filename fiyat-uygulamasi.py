@@ -13,21 +13,33 @@ from reportlab.pdfbase.ttfonts import TTFont
 from PIL import Image as PILImage
 import io
 import base64
+import urllib.request
 
-# Türkçe karakter dönüşüm fonksiyonu
-def fix_turkish_chars(text):
-    """Türkçe karakterleri düzelt"""
-    replacements = {
-        'ç': 'c', 'Ç': 'C',
-        'ğ': 'g', 'Ğ': 'G',
-        'ı': 'i', 'I': 'I', 
-        'ö': 'o', 'Ö': 'O',
-        'ş': 's', 'Ş': 'S',
-        'ü': 'u', 'Ü': 'U'
-    }
-    for tr_char, en_char in replacements.items():
-        text = text.replace(tr_char, en_char)
-    return text
+# Türkçe destekli font yükleme
+@st.cache_resource
+def load_turkish_font():
+    """Türkçe karakterleri destekleyen font yükle"""
+    try:
+        # DejaVu Sans fontunu indir ve yükle (Türkçe karakterler desteklenir)
+        font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+        bold_font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
+        
+        # Fontları indir
+        urllib.request.urlretrieve(font_url, "DejaVuSans.ttf")
+        urllib.request.urlretrieve(bold_font_url, "DejaVuSans-Bold.ttf")
+        
+        # ReportLab'a kaydet
+        pdfmetrics.registerFont(TTFont('TurkishFont', 'DejaVuSans.ttf'))
+        pdfmetrics.registerFont(TTFont('TurkishFont-Bold', 'DejaVuSans-Bold.ttf'))
+        
+        return 'TurkishFont', 'TurkishFont-Bold'
+        
+    except Exception as e:
+        st.warning(f"Türkçe font yüklenemedi: {e}. Standart font kullanılacak.")
+        return 'Helvetica', 'Helvetica-Bold'
+
+# Font yükle
+FONT_NORMAL, FONT_BOLD = load_turkish_font()
 
 # Sayfa ayarları
 st.set_page_config(
@@ -55,11 +67,20 @@ st.markdown("""
         padding: 10px 20px;
         font-weight: bold;
     }
+    .quick-product-btn {
+        background-color: #28a745 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 5px !important;
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        width: 100% !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Başlık
-st.markdown('<div class="main-header"><h1>🌶️ FIYAT TEKLIFI OLUSTURUCU</h1><p>Buldumlar Biber & Baharat Entegre Tesisleri</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>🌶️ FİYAT TEKLİFİ OLUŞTURUCU</h1><p>Buldumlar Biber & Baharat Entegre Tesisleri</p></div>', unsafe_allow_html=True)
 
 # Session state başlatma
 if 'products' not in st.session_state:
@@ -68,48 +89,97 @@ if 'editing_index' not in st.session_state:
     st.session_state.editing_index = None
 if 'pdf_data' not in st.session_state:
     st.session_state.pdf_data = None
+if 'quick_product' not in st.session_state:
+    st.session_state.quick_product = ""
 
 # Sidebar
 with st.sidebar:
-    st.header("📋 Islemler")
-    if st.button("🗑️ Tum Urunleri Temizle"):
+    st.header("📋 İşlemler")
+    if st.button("🗑️ Tüm Ürünleri Temizle"):
         if st.session_state.products:
             st.session_state.products.clear()
             st.session_state.editing_index = None
-            st.success("Tum urunler silindi!")
+            st.success("Tüm ürünler silindi!")
         else:
-            st.info("Zaten hic urun yok!")
+            st.info("Zaten hiç ürün yok!")
 
 # Ana içerik
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.subheader("👥 Musteri Bilgileri")
-    customer_company = st.text_input("Musteri Firma Adi", placeholder="Ornek: Saloon Burger")
-    contact_person = st.text_input("Ilgili Kisi", placeholder="Ornek: Mehmet Yilmaz")
+    st.subheader("👥 Müşteri Bilgileri")
+    customer_company = st.text_input("Müşteri Firma Adı", placeholder="Örnek: Saloon Burger")
+    contact_person = st.text_input("İlgili Kişi", placeholder="Örnek: Mehmet Yılmaz")
     
-    st.subheader("🛒 Urun Ekle/Duzenle")
+    st.subheader("🛒 Ürün Ekle/Düzenle")
     
+    # HIZLI ÜRÜN BUTONLARI
+    st.write("**⚡ Hızlı Ürün Seçimi:**")
+    
+    # İlk sıra - Biber ürünleri
+    col_p1, col_p2, col_p3 = st.columns(3)
+    
+    with col_p1:
+        if st.button("🌶️ Yağlı Pul Biber", use_container_width=True, key="yagli_pul"):
+            st.session_state.quick_product = "Yağlı Pul Biber"
+            st.rerun()
+    
+    with col_p2:
+        if st.button("🌶️ İpek Pul Biber", use_container_width=True, key="ipek_pul"):
+            st.session_state.quick_product = "İpek Pul Biber"
+            st.rerun()
+    
+    with col_p3:
+        if st.button("🌶️ Halis Pul Biber", use_container_width=True, key="halis_pul"):
+            st.session_state.quick_product = "Halis Pul Biber"
+            st.rerun()
+    
+    # İkinci sıra - Diğer ürünler
+    col_p4, col_p5, col_p6 = st.columns(3)
+    
+    with col_p4:
+        if st.button("🌿 İsot", use_container_width=True, key="isot"):
+            st.session_state.quick_product = "İsot"
+            st.rerun()
+    
+    with col_p5:
+        if st.button("🌿 Kekik", use_container_width=True, key="kekik"):
+            st.session_state.quick_product = "Kekik"
+            st.rerun()
+    
+    with col_p6:
+        if st.button("🌿 Köri", use_container_width=True, key="kori"):
+            st.session_state.quick_product = "Köri"
+            st.rerun()
+    
+    st.divider()
+    
+    # Form alanları
     # Düzenleme kontrolü
     if st.session_state.editing_index is not None:
         editing_product = st.session_state.products[st.session_state.editing_index]
         default_name = editing_product['name']
         default_price = editing_product['unit_price']
         default_vat = editing_product['vat_rate']
-        button_text = "✏️ Urunu Guncelle"
+        button_text = "✏️ Ürünü Güncelle"
         button_color = "secondary"
     else:
-        default_name = ""
+        # Hızlı ürün seçimi kontrolü
+        if st.session_state.quick_product:
+            default_name = st.session_state.quick_product
+            st.session_state.quick_product = ""  # Temizle
+        else:
+            default_name = ""
         default_price = 0.0
-        default_vat = 20.0
-        button_text = "➕ Urun Ekle"
+        default_vat = 1.0  # KDV varsayılan %1
+        button_text = "➕ Ürün Ekle"
         button_color = "primary"
     
-    product_name = st.text_input("Urun Adi", value=default_name, placeholder="Ornek: Karabiber")
+    product_name = st.text_input("Ürün Adı", value=default_name, placeholder="Örnek: Karabiber")
     
     col_price, col_vat = st.columns([2, 1])
     with col_price:
-        unit_price = st.number_input("Kilogram Fiyati (KDV Haric)", value=default_price, min_value=0.0, step=0.01)
+        unit_price = st.number_input("Kilogram Fiyatı (KDV Hariç)", value=default_price, min_value=0.0, step=0.01)
     with col_vat:
         vat_rate = st.number_input("KDV (%)", value=default_vat, min_value=0.0, max_value=100.0, step=1.0)
     
@@ -131,22 +201,22 @@ with col1:
                 if st.session_state.editing_index is not None:
                     st.session_state.products[st.session_state.editing_index] = product
                     st.session_state.editing_index = None
-                    st.success(f"'{product_name}' guncellendi!")
+                    st.success(f"'{product_name}' güncellendi!")
                     st.rerun()
                 else:
                     st.session_state.products.append(product)
                     st.rerun()
             else:
-                st.error("Urun adi bos olamaz!")
+                st.error("Ürün adı boş olamaz!")
     
     with col_btn2:
         if st.session_state.editing_index is not None:
-            if st.button("❌ Iptal"):
+            if st.button("❌ İptal"):
                 st.session_state.editing_index = None
                 st.rerun()
 
 with col2:
-    st.subheader("📦 Eklenen Urunler")
+    st.subheader("📦 Eklenen Ürünler")
     
     if st.session_state.products:
         # DataFrame gösterimi
@@ -154,8 +224,8 @@ with col2:
         for i, product in enumerate(st.session_state.products):
             df_data.append({
                 'No': i + 1,
-                'Urun Adi': product['name'],
-                'KDV Haric (TL/kg)': f"{product['unit_price']:.2f}",
+                'Ürün Adı': product['name'],
+                'KDV Hariç (TL/kg)': f"{product['unit_price']:.2f}",
                 'KDV %': f"{product['vat_rate']:.0f}",
                 'KDV Dahil (TL/kg)': f"{product['vat_price']:.2f}"
             })
@@ -164,12 +234,12 @@ with col2:
         st.dataframe(df, use_container_width=True, hide_index=True)
         
         # İşlem butonları
-        st.write("**Islemler:**")
+        st.write("**İşlemler:**")
         for i, product in enumerate(st.session_state.products):
             col_edit, col_delete, col_info = st.columns([1, 1, 3])
             
             with col_edit:
-                if st.button(f"✏️", key=f"edit_{i}", help="Duzenle"):
+                if st.button(f"✏️", key=f"edit_{i}", help="Düzenle"):
                     st.session_state.editing_index = i
                     st.rerun()
             
@@ -187,16 +257,16 @@ with col2:
             with col_info:
                 st.write(f"{i+1}. {product['name']}")
         
-        st.write(f"**Toplam: {len(st.session_state.products)} urun**")
+        st.write(f"**Toplam: {len(st.session_state.products)} ürün**")
     else:
-        st.info("Henuz urun eklenmemis. Soldan urun bilgilerini doldurup 'Urun Ekle' butonuna tiklayin.")
+        st.info("Henüz ürün eklenmemiş. Soldan ürün bilgilerini doldurup 'Ürün Ekle' butonuna tıklayın.")
 
 # PDF Oluşturma Bölümü
 st.divider()
-st.subheader("📄 PDF Olustur")
+st.subheader("📄 PDF Oluştur")
 
 if st.session_state.products and customer_company.strip():
-    if st.button("📋 PDF TEKLIFI OLUSTUR", type="primary", use_container_width=True):
+    if st.button("📋 PDF TEKLİFİ OLUŞTUR", type="primary", use_container_width=True):
         try:
             # Logo watermark fonksiyonu
             def create_watermark_logo():
@@ -234,30 +304,30 @@ if st.session_state.products and customer_company.strip():
             story = []
             
             # Stiller
-            company_style = ParagraphStyle('CompanyStyle', fontName='Helvetica-Bold', fontSize=16,
+            company_style = ParagraphStyle('CompanyStyle', fontName=FONT_BOLD, fontSize=16,
                                           spaceAfter=25, alignment=TA_CENTER,
                                           textColor=colors.Color(0.86, 0.24, 0.26))
             
-            title_style = ParagraphStyle('TitleStyle', fontName='Helvetica-Bold', fontSize=18,
+            title_style = ParagraphStyle('TitleStyle', fontName=FONT_BOLD, fontSize=18,
                                         spaceAfter=20, alignment=TA_CENTER,
                                         textColor=colors.Color(0.86, 0.24, 0.26))
             
-            left_style = ParagraphStyle('LeftStyle', fontName='Helvetica', fontSize=10,
+            left_style = ParagraphStyle('LeftStyle', fontName=FONT_NORMAL, fontSize=10,
                                        spaceAfter=4, alignment=TA_LEFT, leftIndent=0)
             
-            heading_style = ParagraphStyle('HeadingStyle', fontName='Helvetica-Bold', fontSize=12,
+            heading_style = ParagraphStyle('HeadingStyle', fontName=FONT_BOLD, fontSize=12,
                                           spaceAfter=8, textColor=colors.Color(0.86, 0.24, 0.26))
             
-            normal_style = ParagraphStyle('NormalStyle', fontName='Helvetica', fontSize=10, spaceAfter=6)
+            normal_style = ParagraphStyle('NormalStyle', fontName=FONT_NORMAL, fontSize=10, spaceAfter=6)
             
-            contact_style = ParagraphStyle('ContactStyle', fontName='Helvetica-Bold', fontSize=11,
+            contact_style = ParagraphStyle('ContactStyle', fontName=FONT_BOLD, fontSize=11,
                                          spaceAfter=8, alignment=TA_LEFT,
                                          textColor=colors.Color(0.86, 0.24, 0.26))
             
-            # İçerik oluştur
-            company_name = fix_turkish_chars("BULDUMLAR BIBER & BAHARAT ENT. TESISLERI")
+            # İçerik oluştur - Gerçek Türkçe karakterlerle
+            company_name = "BULDUMLAR BİBER & BAHARAT ENT. TESİSLERİ"
             story.append(Paragraph(company_name, company_style))
-            story.append(Paragraph(fix_turkish_chars("FIYAT TEKLIFI"), title_style))
+            story.append(Paragraph("FİYAT TEKLİFİ", title_style))
             story.append(Spacer(1, 15))
             
             today = datetime.now()
@@ -266,27 +336,22 @@ if st.session_state.products and customer_company.strip():
             story.append(Spacer(1, 20))
             
             story.append(Paragraph("SAYIN", heading_style))
-            customer_info = fix_turkish_chars(customer_company)
+            customer_info = customer_company
             if contact_person.strip():
-                customer_info += f"<br/>Att: {fix_turkish_chars(contact_person)}"
+                customer_info += f"<br/>Att: {contact_person}"
             story.append(Paragraph(customer_info, normal_style))
             story.append(Spacer(1, 20))
             
-            story.append(Paragraph(fix_turkish_chars("FIYAT LISTESI (Kilogram Bazinda)"), heading_style))
+            story.append(Paragraph("FİYAT LİSTESİ (Kilogram Bazında)", heading_style))
             story.append(Spacer(1, 10))
             
-            # Tablo
-            table_headers = [
-                fix_turkish_chars('Urun Adi'), 
-                fix_turkish_chars('Birim Fiyat\n(KDV Haric)'), 
-                'KDV %', 
-                fix_turkish_chars('Birim Fiyat\n(KDV Dahil)')
-            ]
+            # Tablo - Türkçe karakterlerle
+            table_headers = ['Ürün Adı', 'Birim Fiyat\n(KDV Hariç)', 'KDV %', 'Birim Fiyat\n(KDV Dahil)']
             table_data = [table_headers]
             
             for product in st.session_state.products:
                 table_data.append([
-                    fix_turkish_chars(product['name']),
+                    product['name'],
                     f"{product['unit_price']:.2f} TL/kg",
                     f"%{product['vat_rate']:.0f}",
                     f"{product['vat_price']:.2f} TL/kg"
@@ -298,8 +363,8 @@ if st.session_state.products and customer_company.strip():
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
+                ('FONTNAME', (0, 1), (-1, -1), FONT_NORMAL),
                 ('FONTSIZE', (0, 0), (-1, 0), 9),
                 ('FONTSIZE', (0, 1), (-1, -1), 9),
                 ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.Color(1, 0.95, 0.95), colors.white]),
@@ -313,22 +378,22 @@ if st.session_state.products and customer_company.strip():
             story.append(product_table)
             story.append(Spacer(1, 25))
             
-            # Notlar
-            notes = f"""<b>{fix_turkish_chars('NOTLAR:')}</b><br/>
-            {fix_turkish_chars('• Fiyatlar Turk Lirasi cinsindendir.')}<br/>
-            {fix_turkish_chars('• Fiyatlar kilogram bazinda verilmistir.')}<br/>
-            {fix_turkish_chars('• Minimum siparis miktarlari icin ayrica bilgi verilecektir.')}<br/>
-            {fix_turkish_chars('• Teslim suresi siparis onayindan sonra belirlenecektir.')}"""
+            # Notlar - Gerçek Türkçe karakterlerle
+            notes = """<b>NOTLAR:</b><br/>
+            • Fiyatlar Türk Lirası cinsindendir.<br/>
+            • Fiyatlar kilogram bazında verilmiştir.<br/>
+            • Minimum sipariş miktarları için ayrıca bilgi verilecektir.<br/>
+            • Teslim süresi sipariş onayından sonra belirlenecektir."""
             
             story.append(Paragraph(notes, normal_style))
             story.append(Spacer(1, 30))
             
-            # İLETİŞİM BİLGİLERİ - MUTLAKA GÖRÜNECEK
-            story.append(Paragraph(fix_turkish_chars("TEKLIF VEREN:"), contact_style))
-            story.append(Paragraph(f"<b>{fix_turkish_chars('Ertugrul BULDUM')}</b>", normal_style))
-            story.append(Paragraph(fix_turkish_chars("Satis Direktoru"), normal_style))
+            # İLETİŞİM BİLGİLERİ - Gerçek Türkçe karakterlerle
+            story.append(Paragraph("TEKLİF VEREN:", contact_style))
+            story.append(Paragraph("<b>Ertuğrul BULDUM</b>", normal_style))
+            story.append(Paragraph("Satış Direktörü", normal_style))
             story.append(Spacer(1, 10))
-            story.append(Paragraph("<b>Iletisim:</b> +90 530 078 06 46", normal_style))
+            story.append(Paragraph("<b>İletişim:</b> +90 530 078 06 46", normal_style))
             story.append(Paragraph("E-mail: info@buldumlarbiber.com", normal_style))
             
             # Logo ekleme fonksiyonu
@@ -354,7 +419,7 @@ if st.session_state.products and customer_company.strip():
                 st.session_state.pdf_data = pdf_file.read()
                 st.session_state.pdf_filename = filename
             
-            st.success("PDF basariyla olusturuldu!")
+            st.success("PDF başarıyla oluşturuldu!")
             
             # Temizlik
             if os.path.exists(filename):
