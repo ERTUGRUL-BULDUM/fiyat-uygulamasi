@@ -335,17 +335,101 @@ if st.session_state.products and customer_company.strip():
             # PDF oluştur
             doc.build(story, onFirstPage=add_logo_watermark, onLaterPages=add_logo_watermark)
             
-            # İndirme butonu
+            # PDF'i bellekte sakla
             with open(filename, "rb") as pdf_file:
                 pdf_bytes = pdf_file.read()
             
+            # Session state'e kaydet (sıfırlanmasın diye)
+            st.session_state.pdf_data = pdf_bytes
+            st.session_state.pdf_filename = filename
+            
             st.success("PDF başarıyla oluşturuldu!")
-            st.download_button(
-                label="📥 PDF'i İndir",
-                data=pdf_bytes,
-                file_name=filename,
-                mime="application/pdf"
-            )
+            
+            # Buton satırı
+            col_download, col_print, col_share = st.columns([1, 1, 1])
+            
+            with col_download:
+                st.download_button(
+                    label="📥 PDF İndir",
+                    data=pdf_bytes,
+                    file_name=filename,
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            
+            with col_print:
+                # JavaScript ile yazdırma
+                print_js = f"""
+                <script>
+                function printPDF() {{
+                    const pdfBlob = new Blob([new Uint8Array({list(pdf_bytes)})], {{type: 'application/pdf'}});
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+                    const printWindow = window.open(pdfUrl);
+                    printWindow.addEventListener('load', function() {{
+                        printWindow.print();
+                    }});
+                }}
+                </script>
+                <button onclick="printPDF()" style="
+                    background-color: #dc3545; 
+                    color: white; 
+                    border: none; 
+                    padding: 10px 20px; 
+                    border-radius: 5px; 
+                    cursor: pointer; 
+                    width: 100%;
+                    font-weight: bold;
+                ">🖨️ PDF Yazdır</button>
+                """
+                st.components.v1.html(print_js, height=50)
+            
+            with col_share:
+                # Basit paylaşım URL'si oluştur
+                share_text = f"Fiyat Teklifi: {customer_company} - {len(st.session_state.products)} ürün"
+                share_url = f"https://wa.me/?text={share_text.replace(' ', '%20')}"
+                
+                st.markdown(f"""
+                <a href="{share_url}" target="_blank" style="
+                    display: inline-block; 
+                    background-color: #25d366; 
+                    color: white; 
+                    padding: 10px 20px; 
+                    text-decoration: none; 
+                    border-radius: 5px; 
+                    text-align: center; 
+                    width: 100%;
+                    font-weight: bold;
+                    box-sizing: border-box;
+                ">📱 WhatsApp Paylaş</a>
+                """, unsafe_allow_html=True)
+            
+            # PDF görüntüleyici
+            st.subheader("📄 PDF Önizleme")
+            st.write("PDF'yi görüntülemek için aşağıdaki düğmeye tıklayın:")
+            
+            # PDF görüntüleme butonu
+            if st.button("👁️ PDF'i Görüntüle", use_container_width=True):
+                st.session_state.show_pdf = True
+            
+            # PDF'i göster (eğer talep edildiyse)
+            if hasattr(st.session_state, 'show_pdf') and st.session_state.show_pdf:
+                # Base64 encode
+                import base64
+                b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+                
+                # PDF viewer HTML
+                pdf_display = f"""
+                <iframe src="data:application/pdf;base64,{b64_pdf}" 
+                        width="100%" height="600" type="application/pdf">
+                    PDF görüntülenemiyor. Lütfen PDF'i indirin.
+                </iframe>
+                """
+                st.markdown(pdf_display, unsafe_allow_html=True)
+                
+                # Kapatma butonu
+                if st.button("❌ PDF Görüntüleyiciyi Kapat"):
+                    st.session_state.show_pdf = False
+                    st.rerun()
             
             # Geçici dosyayı temizle
             if os.path.exists(filename):
@@ -353,6 +437,66 @@ if st.session_state.products and customer_company.strip():
                 
         except Exception as e:
             st.error(f"PDF oluşturma hatası: {str(e)}")
+            st.write("Hata detayları:", str(e))
+
+# Eğer daha önce PDF oluşturulmuşsa, butonları göster
+elif hasattr(st.session_state, 'pdf_data') and st.session_state.pdf_data:
+    st.info("PDF daha önce oluşturuldu. Aşağıdaki seçenekleri kullanabilirsiniz:")
+    
+    col_download, col_print, col_share = st.columns([1, 1, 1])
+    
+    with col_download:
+        st.download_button(
+            label="📥 PDF İndir",
+            data=st.session_state.pdf_data,
+            file_name=st.session_state.pdf_filename,
+            mime="application/pdf",
+            use_container_width=True
+        )
+    
+    with col_print:
+        print_js = f"""
+        <script>
+        function printPDF() {{
+            const pdfBlob = new Blob([new Uint8Array({list(st.session_state.pdf_data)})], {{type: 'application/pdf'}});
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            const printWindow = window.open(pdfUrl);
+            printWindow.addEventListener('load', function() {{
+                printWindow.print();
+            }});
+        }}
+        </script>
+        <button onclick="printPDF()" style="
+            background-color: #dc3545; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            width: 100%;
+            font-weight: bold;
+        ">🖨️ PDF Yazdır</button>
+        """
+        st.components.v1.html(print_js, height=50)
+    
+    with col_share:
+        share_text = f"Fiyat Teklifi: {customer_company} - {len(st.session_state.products)} ürün"
+        share_url = f"https://wa.me/?text={share_text.replace(' ', '%20')}"
+        
+        st.markdown(f"""
+        <a href="{share_url}" target="_blank" style="
+            display: inline-block; 
+            background-color: #25d366; 
+            color: white; 
+            padding: 10px 20px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            text-align: center; 
+            width: 100%;
+            font-weight: bold;
+            box-sizing: border-box;
+        ">📱 WhatsApp Paylaş</a>
+        """, unsafe_allow_html=True)
 
 else:
     if not st.session_state.products:
